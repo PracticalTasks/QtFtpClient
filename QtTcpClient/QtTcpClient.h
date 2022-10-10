@@ -3,9 +3,8 @@
 #include <QtWidgets/QMainWindow>
 #include <QImage>
 #include <QByteArrayView>
-//#include <QPainter>
+#include <QMessageBox>
 #include "ui_QtTcpClient.h"
-//#include "PaintWdg.h"
 
 #include <chrono>
 #include <cstdlib>
@@ -31,7 +30,6 @@ private slots:
     void connecting_toserv();
     void req_file();
     void serv_shutdown();
-    //void disconnect_fromserv();
  
 private:
     addrinfo* get_addrinfo(const std::string& host_name);
@@ -40,9 +38,6 @@ private:
     Ui::QtTcpClientClass ui;
     
     PaintWdg* paint_wdg = nullptr;
-    //QByteArrayView* arr;
-
-
     socket_wrapper::SocketWrapper sock_wrap;
     socket_wrapper::Socket* client_sock = nullptr;
     uint32_t packet_size = 0;

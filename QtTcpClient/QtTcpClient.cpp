@@ -17,7 +17,6 @@ QtTcpClient::QtTcpClient(QWidget *parent)
 QtTcpClient::~QtTcpClient()
 {
     delete client_sock;
-    //delete arr;
     delete paint_wdg;
 }
 
@@ -25,14 +24,13 @@ void QtTcpClient::req_file()
 {
     std::vector<char>buff(BUFF_SIZE);
     std::string send_mess = ui.lineEdit_addr->text().toStdString();
-   // std::string send_buff;
 
     packet_size = send(*client_sock, send_mess.c_str(), send_mess.size(), 0);
 
     if (packet_size == SOCKET_ERROR)
     {
-        std::cout << "Can't send message to Server. Error #";
-        std::cerr << sock_wrap.get_last_error_string() << std::endl;
+        std::string err("Can't send request of file to Server. Error #" + sock_wrap.get_last_error_string());
+        QMessageBox::warning(this, "Error sending request of file", err.c_str(), QMessageBox::Cancel);
         return;
     }
 
@@ -40,19 +38,16 @@ void QtTcpClient::req_file()
 
     if (packet_size == SOCKET_ERROR)
     {
-        std::cout << "Can`t receiv message from Server. Error #";
-        std::cerr << sock_wrap.get_last_error_string() << std::endl;
+        std::string err("Can`t receiv file from Server. Error #" + sock_wrap.get_last_error_string());
+        QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
+
         return;
     }
     else
     {
         paint_wdg = new PaintWdg(buff);
         paint_wdg->show_wdg();
-        //arr = new QByteArrayView(buff);
-        //std::cout << "Server message: " << buff.data() << std::endl;
-    }
-        
-
+    }     
 }
 
 void QtTcpClient::serv_shutdown()
@@ -64,28 +59,19 @@ void QtTcpClient::serv_shutdown()
 
         if (packet_size == SOCKET_ERROR)
         {
-            std::cout << "Can`t receiv message from Server. Error #";
-            std::cerr << sock_wrap.get_last_error_string() << std::endl;
+            std::string err("Can't send CMD_EXT to Server. Error #" + sock_wrap.get_last_error_string());
+            QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
             return;
         }
 
         ui.label_status->setText("СЕРВЕР ЛЕЖИТ");
     }
-
-
 }
-
-//void QtTcpClient::disconnect_fromserv()
-//{
-//}
 
 //Метод для трансяции имени хоста в адресс
 //Возвращает указатель на связанный список структур addrinfo содержащую информацию о хосте
 addrinfo* QtTcpClient::get_addrinfo(const std::string& host_name)
 {
-    // Need for Windows initialization.
-    //socket_wrapper::SocketWrapper sock_wrap;
-
     addrinfo* servinfo = nullptr;
 
     addrinfo hints =
@@ -101,9 +87,9 @@ addrinfo* QtTcpClient::get_addrinfo(const std::string& host_name)
 
     int status{};
 
-    if ((status = getaddrinfo(host_name.c_str(), nullptr, &hints, &servinfo)) != 0)
+    if (status = getaddrinfo(host_name.c_str(), nullptr, &hints, &servinfo))
     {
-        std::cerr << "getaddrinfo error!" << std::endl;
+        QMessageBox::warning(this, "Error getting getaddrinfo", "getaddrinfo error!", QMessageBox::Cancel);
         return nullptr;
     }
 
@@ -116,7 +102,7 @@ void QtTcpClient::connecting_toserv()
 
     if (!client_sock)
     {
-        std::cerr << sock_wrap.get_last_error_string() << std::endl;
+        QMessageBox::warning(this, "Socket creation error", sock_wrap.get_last_error_string().c_str(), QMessageBox::Cancel);
         return;
     }
 
@@ -139,8 +125,8 @@ void QtTcpClient::connecting_toserv()
 
     if (::connect(*client_sock, (SOCKADDR*)&serv_addr, sizeof(serv_addr)))
     {
-        std::cout << "Connection to Server is FAILED. Error #";
-        std::cerr << sock_wrap.get_last_error_string() << std::endl;
+        std::string err("Connection to Server is FAILED. Error #" + sock_wrap.get_last_error_string());
+        QMessageBox::warning(this, "Error connection to server", err.c_str(), QMessageBox::Cancel);
         return;
     }
 
