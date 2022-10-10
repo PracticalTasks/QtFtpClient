@@ -30,6 +30,8 @@ public:
 private slots:
     void connecting_toserv();
     void req_file();
+    void serv_shutdown();
+    //void disconnect_fromserv();
  
 private:
     addrinfo* get_addrinfo(const std::string& host_name);
@@ -37,12 +39,13 @@ private:
 private:
     Ui::QtTcpClientClass ui;
     
-    PaintWdg* paint_wdg;
+    PaintWdg* paint_wdg = nullptr;
     //QByteArrayView* arr;
 
 
     socket_wrapper::SocketWrapper sock_wrap;
     socket_wrapper::Socket* client_sock = nullptr;
-    char ip[INET_ADDRSTRLEN];
+    uint32_t packet_size = 0;
+    char ip[INET_ADDRSTRLEN]{};
     const uint32_t BUFF_SIZE = 0x3200000;       //50 Ìב
 };

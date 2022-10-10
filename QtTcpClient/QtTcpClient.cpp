@@ -9,6 +9,8 @@ QtTcpClient::QtTcpClient(QWidget *parent)
     
     connect(ui.pushButton_connect, SIGNAL(clicked()), SLOT(connecting_toserv()));
     connect(ui.pushButton_req, SIGNAL(clicked()), SLOT(req_file()));
+    connect(ui.pushButton_shutdown, &QPushButton::clicked, this, &QtTcpClient::serv_shutdown);
+    connect(ui.pushButton_disconnect, &QPushButton::clicked, [&]() {shutdown(*client_sock, 2); ui.label_connect->setText("Нет"); });
 
 }
 
@@ -24,7 +26,6 @@ void QtTcpClient::req_file()
     std::vector<char>buff(BUFF_SIZE);
     std::string send_mess = ui.lineEdit_addr->text().toStdString();
    // std::string send_buff;
-    uint32_t packet_size = 0;
 
     packet_size = send(*client_sock, send_mess.c_str(), send_mess.size(), 0);
 
@@ -53,6 +54,30 @@ void QtTcpClient::req_file()
         
 
 }
+
+void QtTcpClient::serv_shutdown()
+{
+    const std::string CMD_EXT("exit");
+    if (client_sock->opened())
+    {
+        packet_size = send(*client_sock, CMD_EXT.c_str(), CMD_EXT.size(), 0);
+
+        if (packet_size == SOCKET_ERROR)
+        {
+            std::cout << "Can`t receiv message from Server. Error #";
+            std::cerr << sock_wrap.get_last_error_string() << std::endl;
+            return;
+        }
+
+        ui.label_status->setText("СЕРВЕР ЛЕЖИТ");
+    }
+
+
+}
+
+//void QtTcpClient::disconnect_fromserv()
+//{
+//}
 
 //Метод для трансяции имени хоста в адресс
 //Возвращает указатель на связанный список структур addrinfo содержащую информацию о хосте
