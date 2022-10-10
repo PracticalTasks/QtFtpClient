@@ -12,7 +12,6 @@ void PaintWdg::show_wdg()
     repaint();
 }
 
-
 void PaintWdg::paintEvent(QPaintEvent* event)
 {
     painter.begin(this);
