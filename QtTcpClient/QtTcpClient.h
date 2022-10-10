@@ -42,5 +42,5 @@ private:
     socket_wrapper::Socket* client_sock = nullptr;
     uint32_t packet_size = 0;
     char ip[INET_ADDRSTRLEN]{};
-    const uint32_t BUFF_SIZE = 0x3200000;       //50 Ã·
+    const uint32_t BUFF_SIZE = 0x3200000;       //50 –ú–±
 };
