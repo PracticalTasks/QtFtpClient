@@ -110,13 +110,11 @@
     <QtRcc Include="QtTcpClient.qrc" />
     <QtUic Include="QtTcpClient.ui" />
     <QtMoc Include="QtTcpClient.h" />
-    <ClCompile Include="Netwrk.cpp" />
     <ClCompile Include="PaintWdg.cpp" />
     <ClCompile Include="QtTcpClient.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Netwrk.h" />
     <ClInclude Include="PaintWdg.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

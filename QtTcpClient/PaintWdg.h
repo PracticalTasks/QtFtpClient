@@ -13,5 +13,4 @@ protected:
 private:
 	QPainter painter;
 	QImage img;
-	//QByteArrayView* arr;
 };
