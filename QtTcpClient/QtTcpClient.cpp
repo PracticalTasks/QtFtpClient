@@ -43,12 +43,36 @@ void QtTcpClient::req_file()
 
         return;
     }
-    else
+    int size_file = 0;
+    size_file = size_extraction(buff);
+    std::vector<char>buff_bin(buff.begin() + 4, buff.end());
+    //buff.assign(buff.begin() + 4, buff.end());
+
+    //buff.insert(buff.begin(), buff.begin() + 4, buff.end());
+    uint32_t reciev_size{ packet_size - 4 };
+    while (reciev_size < size_file)
     {
-        paint_wdg = new PaintWdg(buff);
-        paint_wdg->show_wdg();
-    }     
+        packet_size = recv(*client_sock, buff.data(), buff.size(), 0);
+        if (packet_size == SOCKET_ERROR)
+        {
+            std::string err("Can`t receiv file from Server. Error #" + sock_wrap.get_last_error_string());
+            QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
+
+            return;
+        }
+        buff_bin.insert(buff_bin.end(), buff.begin(), buff.end());
+
+        reciev_size += packet_size;
+    }
+    paint_wdg = new PaintWdg(buff_bin);
+    paint_wdg->show_wdg();
+    
 }
+
+
+
+
+
 
 void QtTcpClient::serv_shutdown()
 {
@@ -94,6 +118,16 @@ addrinfo* QtTcpClient::get_addrinfo(const std::string& host_name)
     }
 
     return servinfo;
+}
+
+int32_t QtTcpClient::size_extraction(std::vector<char> &buf_bin)
+{
+    uint32_t size_file{};
+    //char size_file;
+    for (int i{}, factor{1}; i < 4; ++i, factor *= 0x100)
+        size_file += (buf_bin[i] * factor);
+
+    return size_file;
 }
 
 void QtTcpClient::connecting_toserv()
