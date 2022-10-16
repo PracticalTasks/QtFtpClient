@@ -12,6 +12,7 @@ PaintWdg::~PaintWdg()
 {
 }
 
+
 void PaintWdg::show_wdg()
 {
     show();
