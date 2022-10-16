@@ -33,7 +33,7 @@ private slots:
  
 private:
     addrinfo* get_addrinfo(const std::string& host_name);
-    int32_t size_extraction(std::vector<char> &buf_bin);
+    uint32_t size_extraction(std::vector<char> &buf_bin);
 
 private:
     Ui::QtTcpClientClass ui;
@@ -43,5 +43,5 @@ private:
     socket_wrapper::Socket* client_sock = nullptr;
     uint32_t packet_size = 0;
     char ip[INET_ADDRSTRLEN]{};
-    const uint32_t BUFF_SIZE = 4096;       //50 Мб
+    const uint32_t BUFF_SIZE = 4096;       
 };

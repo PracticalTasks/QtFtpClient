@@ -45,10 +45,9 @@ void QtTcpClient::req_file()
     }
     int size_file = 0;
     size_file = size_extraction(buff);
-    std::vector<char>buff_bin(buff.begin() + 4, buff.end());
-    //buff.assign(buff.begin() + 4, buff.end());
-
-    //buff.insert(buff.begin(), buff.begin() + 4, buff.end());
+    //std::vector<char> buff_bin(buff.begin() + 4, buff.end());
+    QByteArray buff_bin(buff.data() + 4, buff.size() - 4);
+    buff.assign(BUFF_SIZE, 0);
     uint32_t reciev_size{ packet_size - 4 };
     while (reciev_size < size_file)
     {
@@ -60,19 +59,14 @@ void QtTcpClient::req_file()
 
             return;
         }
-        buff_bin.insert(buff_bin.end(), buff.begin(), buff.end());
 
+        buff_bin.append(buff.data(), buff.size());
         reciev_size += packet_size;
     }
+   // buff_bin.resize(size_file);
     paint_wdg = new PaintWdg(buff_bin);
     paint_wdg->show_wdg();
-    
 }
-
-
-
-
-
 
 void QtTcpClient::serv_shutdown()
 {
@@ -120,13 +114,13 @@ addrinfo* QtTcpClient::get_addrinfo(const std::string& host_name)
     return servinfo;
 }
 
-int32_t QtTcpClient::size_extraction(std::vector<char> &buf_bin)
+uint32_t QtTcpClient::size_extraction(std::vector<char> &buf_bin)
 {
     uint32_t size_file{};
-    //char size_file;
-    for (int i{}, factor{1}; i < 4; ++i, factor *= 0x100)
-        size_file += (buf_bin[i] * factor);
-
+    
+    for (int i{}, factor{ 1 }; i < 4; ++i, factor *= 0x100)
+        size_file +=  static_cast<unsigned char>(buf_bin[i]) * factor;
+        
     return size_file;
 }
 

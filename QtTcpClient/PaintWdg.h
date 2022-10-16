@@ -4,7 +4,8 @@
 class PaintWdg : QWidget
 {
 public:
-	PaintWdg(std::vector<char> pic, QWidget* parent = nullptr);
+	PaintWdg(QByteArray pic, QWidget* parent = nullptr);
+	~PaintWdg();
 	void show_wdg();
 
 protected:
