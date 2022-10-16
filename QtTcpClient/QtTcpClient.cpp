@@ -4,6 +4,7 @@
 
 QtTcpClient::QtTcpClient(QWidget *parent)
     : QMainWindow(parent)
+    , reciev_buff(BUFF_SIZE)
 {
     ui.setupUi(this);
     
@@ -20,9 +21,47 @@ QtTcpClient::~QtTcpClient()
     delete paint_wdg;
 }
 
+void QtTcpClient::connecting_toserv()
+{
+    client_sock = new socket_wrapper::Socket(AF_INET, SOCK_STREAM, NULL);
+
+    if (!client_sock)
+    {
+        QMessageBox::warning(this, "Socket creation error", sock_wrap.get_last_error_string().c_str(), QMessageBox::Cancel);
+        return;
+    }
+
+    std::string str_servaddr = ui.lineEdit_ip->text().toStdString();
+    char ip[INET_ADDRSTRLEN]{};
+    //Сделать более глубокий анализ строки!!!
+    if (str_servaddr[0] < '0' || str_servaddr[0] > '9')
+    {
+        addrinfo* servinfo = get_addrinfo(str_servaddr);
+        sockaddr_in const* const sin = reinterpret_cast<const sockaddr_in* const>(servinfo->ai_addr);
+        inet_ntop(AF_INET, &(sin->sin_addr), ip, INET_ADDRSTRLEN);
+        str_servaddr = ip;
+        freeaddrinfo(servinfo);
+    }
+
+    sockaddr_in serv_addr = {
+    .sin_family = AF_INET,
+    .sin_port = htons(ui.lineEdit_port->text().toUInt())
+    };
+
+    serv_addr.sin_addr.s_addr = inet_addr(str_servaddr.c_str());
+
+    if (::connect(*client_sock, (SOCKADDR*)&serv_addr, sizeof(serv_addr)))
+    {
+        std::string err("Connection to Server is FAILED. Error #" + sock_wrap.get_last_error_string());
+        QMessageBox::warning(this, "Error connection to server", err.c_str(), QMessageBox::Cancel);
+        return;
+    }
+
+    ui.label_connect->setText("ДА");
+}
+
 void QtTcpClient::req_file()
 {
-    std::vector<char>buff(BUFF_SIZE);
     std::string send_mess = ui.lineEdit_addr->text().toStdString();
 
     packet_size = send(*client_sock, send_mess.c_str(), send_mess.size(), 0);
@@ -34,7 +73,7 @@ void QtTcpClient::req_file()
         return;
     }
 
-    packet_size = recv(*client_sock, buff.data(), buff.size(), 0);
+    packet_size = recv(*client_sock, reciev_buff.data(), reciev_buff.size(), 0);
 
     if (packet_size == SOCKET_ERROR)
     {
@@ -43,28 +82,28 @@ void QtTcpClient::req_file()
 
         return;
     }
-    int size_file = 0;
-    size_file = size_extraction(buff);
-    //std::vector<char> buff_bin(buff.begin() + 4, buff.end());
-    QByteArray buff_bin(buff.data() + 4, buff.size() - 4);
-    buff.assign(BUFF_SIZE, 0);
-    uint32_t reciev_size{ packet_size - 4 };
+
+    //Получаем размер файла из первых четырёх байт
+    uint32_t size_file = size_extraction(reciev_buff);
+    //Буфер для сбора картинки по чистям
+    QByteArray buff_img(reciev_buff.data() + SZ_SERV_INFO, reciev_buff.size() - SZ_SERV_INFO);
+
+    int32_t reciev_size{ packet_size};
     while (reciev_size < size_file)
     {
-        packet_size = recv(*client_sock, buff.data(), buff.size(), 0);
+        packet_size = recv(*client_sock, reciev_buff.data(), reciev_buff.size(), 0);
         if (packet_size == SOCKET_ERROR)
         {
             std::string err("Can`t receiv file from Server. Error #" + sock_wrap.get_last_error_string());
             QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
-
             return;
         }
 
-        buff_bin.append(buff.data(), buff.size());
+        buff_img.append(reciev_buff.data(), packet_size);
         reciev_size += packet_size;
     }
-   // buff_bin.resize(size_file);
-    paint_wdg = new PaintWdg(buff_bin);
+
+    paint_wdg = new PaintWdg(buff_img);
     paint_wdg->show_wdg();
 }
 
@@ -81,7 +120,6 @@ void QtTcpClient::serv_shutdown()
             QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
             return;
         }
-
         ui.label_status->setText("СЕРВЕР ЛЕЖИТ");
     }
 }
@@ -122,43 +160,6 @@ uint32_t QtTcpClient::size_extraction(std::vector<char> &buf_bin)
         size_file +=  static_cast<unsigned char>(buf_bin[i]) * factor;
         
     return size_file;
-}
-
-void QtTcpClient::connecting_toserv()
-{
-    client_sock = new socket_wrapper::Socket(AF_INET, SOCK_STREAM, NULL);
-
-    if (!client_sock)
-    {
-        QMessageBox::warning(this, "Socket creation error", sock_wrap.get_last_error_string().c_str(), QMessageBox::Cancel);
-        return;
-    }
-
-    std::string str_servaddr = ui.lineEdit_ip->text().toStdString();
-    if (str_servaddr[0] < '0' || str_servaddr[0] > '9')
-    {
-        addrinfo* servinfo = get_addrinfo(str_servaddr);
-        sockaddr_in const* const sin = reinterpret_cast<const sockaddr_in* const>(servinfo->ai_addr);
-        inet_ntop(AF_INET, &(sin->sin_addr), ip, INET_ADDRSTRLEN);
-        str_servaddr = ip;
-        freeaddrinfo(servinfo);
-    }
-
-    sockaddr_in serv_addr = {
-    .sin_family = AF_INET,
-    .sin_port = htons(ui.lineEdit_port->text().toUInt())
-    };
-
-    serv_addr.sin_addr.s_addr = inet_addr(str_servaddr.c_str());
-
-    if (::connect(*client_sock, (SOCKADDR*)&serv_addr, sizeof(serv_addr)))
-    {
-        std::string err("Connection to Server is FAILED. Error #" + sock_wrap.get_last_error_string());
-        QMessageBox::warning(this, "Error connection to server", err.c_str(), QMessageBox::Cancel);
-        return;
-    }
-
-    ui.label_connect->setText("ДА");
 }
 
 

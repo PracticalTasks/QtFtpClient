@@ -37,11 +37,15 @@ private:
 
 private:
     Ui::QtTcpClientClass ui;
-    
+    const uint32_t BUFF_SIZE = 4096;
+    //Размер служебной информации
+    const uint8_t SZ_SERV_INFO = 4;
+
     PaintWdg* paint_wdg = nullptr;
     socket_wrapper::SocketWrapper sock_wrap;
     socket_wrapper::Socket* client_sock = nullptr;
-    uint32_t packet_size = 0;
-    char ip[INET_ADDRSTRLEN]{};
-    const uint32_t BUFF_SIZE = 4096;       
+    //Буфер для приёма данных частями
+    std::vector<char>reciev_buff;
+    int32_t packet_size = 0;
+         
 };
