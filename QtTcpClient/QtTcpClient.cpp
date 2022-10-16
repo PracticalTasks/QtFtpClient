@@ -86,7 +86,7 @@ void QtTcpClient::req_file()
     //Получаем размер файла из первых четырёх байт
     uint32_t size_file = size_extraction(reciev_buff);
     //Буфер для сбора картинки по чистям
-    QByteArray buff_img(reciev_buff.data() + SZ_SERV_INFO, reciev_buff.size() - SZ_SERV_INFO);
+    QByteArray buff_img(reciev_buff.data() + SERV_INFO_SZ, reciev_buff.size() - SERV_INFO_SZ);
 
     int32_t reciev_size{ packet_size};
     while (reciev_size < size_file)

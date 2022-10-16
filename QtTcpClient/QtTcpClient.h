@@ -39,7 +39,7 @@ private:
     Ui::QtTcpClientClass ui;
     const uint32_t BUFF_SIZE = 4096;
     //Размер служебной информации
-    const uint8_t SZ_SERV_INFO = 4;
+    const uint8_t SERV_INFO_SZ = 4;
 
     PaintWdg* paint_wdg = nullptr;
     socket_wrapper::SocketWrapper sock_wrap;
