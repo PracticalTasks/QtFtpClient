@@ -4,6 +4,8 @@
 #include <QImage>
 #include <QByteArrayView>
 #include <QMessageBox>
+#include <QHostInfo>
+#include <QTcpSocket>
 #include "ui_QtTcpClient.h"
 
 #include <chrono>
@@ -27,25 +29,28 @@ public:
     ~QtTcpClient();
 
 private slots:
-    void connecting_toserv();
-    void req_file();
-    void serv_shutdown();
+    void slot_connecting_toserv();
+    //void req_file();
+    void slot_receive_file();
+    //void serv_shutdown();
+    void slot_errorconnect(QAbstractSocket::SocketError err);
  
 private:
-    addrinfo* get_addrinfo(const std::string& host_name);
-    uint32_t size_extraction(std::vector<char> &buf_bin);
+    uint32_t size_extraction(QByteArray &buf_bin);
 
 private:
     Ui::QtTcpClientClass ui;
+    QTcpSocket* serv_sock = nullptr;
+
     const uint32_t BUFF_SIZE = 4096;
     //Размер служебной информации
     const uint8_t SERV_INFO_SZ = 4;
 
     PaintWdg* paint_wdg = nullptr;
     socket_wrapper::SocketWrapper sock_wrap;
-    socket_wrapper::Socket* client_sock = nullptr;
+    //socket_wrapper::Socket* client_sock = nullptr;
     //Буфер для приёма данных частями
-    std::vector<char>reciev_buff;
+    QByteArray receive_buff;
+    //std::vector<char>reciev_buff;
     int32_t packet_size = 0;
-         
 };
