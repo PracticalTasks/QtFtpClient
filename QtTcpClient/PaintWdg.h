@@ -4,7 +4,7 @@
 class PaintWdg : QWidget
 {
 public:
-	PaintWdg(QByteArray buff_img, QWidget* parent = nullptr);
+	PaintWdg(QByteArray &buff_img, QWidget* parent = nullptr);
 	void show_wdg();
 
 protected:

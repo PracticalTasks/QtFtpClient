@@ -1,6 +1,6 @@
 #include "PaintWdg.h"
 
-PaintWdg::PaintWdg(QByteArray buff_img, QWidget* parent)
+PaintWdg::PaintWdg(QByteArray &buff_img, QWidget* parent)
     : QWidget(parent)
 {   
     img.loadFromData(buff_img);

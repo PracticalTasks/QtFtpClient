@@ -1,24 +1,10 @@
 #pragma once
-
 #include <QtWidgets/QMainWindow>
 #include <QImage>
-#include <QByteArrayView>
 #include <QMessageBox>
-#include <QHostInfo>
 #include <QTcpSocket>
 #include "ui_QtTcpClient.h"
-
-#include <chrono>
-#include <cstdlib>
-#include <iomanip>
-#include <iostream>
-#include <string>
-#include <thread>
-#include <socket_wrapper/socket_headers.h>
-#include <socket_wrapper/socket_wrapper.h>
-#include <socket_wrapper/socket_class.h>
-
-class PaintWdg;
+#include "PaintWdg.h"
 
 class QtTcpClient : public QMainWindow
 {
@@ -26,31 +12,32 @@ class QtTcpClient : public QMainWindow
 
 public:
     QtTcpClient(QWidget *parent = nullptr);
-    ~QtTcpClient();
 
 private slots:
-    void slot_connecting_toserv();
-    //void req_file();
-    void slot_receive_file();
+    void slotConnectingToServ();
+    void slotReceiveFile();
     //void serv_shutdown();
-    void slot_errorconnect(QAbstractSocket::SocketError err);
+    void slotErrorConnect(QAbstractSocket::SocketError err);
  
 private:
-    uint32_t size_extraction(QByteArray &buf_bin);
+    uint32_t sizeExtraction(QByteArray &buf_bin);
 
 private:
     Ui::QtTcpClientClass ui;
-    QTcpSocket* serv_sock = nullptr;
+    std::unique_ptr<QTcpSocket> serverSock;
+    std::unique_ptr<PaintWdg> paintWdg;
+    //Буфер для сбора данных вместе
+    std::unique_ptr<QByteArray> fileBuff;
 
     const uint32_t BUFF_SIZE = 4096;
     //Размер служебной информации
-    const uint8_t SERV_INFO_SZ = 4;
+    const uint8_t SERVICE_INFO_SZ = 4;
 
-    PaintWdg* paint_wdg = nullptr;
-    socket_wrapper::SocketWrapper sock_wrap;
-    //socket_wrapper::Socket* client_sock = nullptr;
-    //Буфер для приёма данных частями
-    QByteArray receive_buff;
-    //std::vector<char>reciev_buff;
-    int32_t packet_size = 0;
+    //Буфер для приёма части данных
+    QByteArray receiveBuff;
+
+    uint32_t fileSize = 0xFFFFFFFF;  
+    int32_t packetSize = 0;
+    //Переменная для определения первого куска данных в котором размер файла 
+    bool hasFileSize = false;
 };

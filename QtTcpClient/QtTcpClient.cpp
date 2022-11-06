@@ -1,128 +1,90 @@
 #include "QtTcpClient.h"
-#include "PaintWdg.h"
-#pragma warning(disable : 4996)
 
 QtTcpClient::QtTcpClient(QWidget *parent)
     : QMainWindow(parent)
-    , receive_buff(BUFF_SIZE, 0)
+    , receiveBuff(BUFF_SIZE, 0)
 {
     ui.setupUi(this);
     
-    connect(ui.pushButton_connect, SIGNAL(clicked()), SLOT(slot_connecting_toserv()));
+    connect(ui.pushButton_connect, SIGNAL(clicked()), SLOT(slotConnectingToServ()));
     connect(ui.pushButton_req, &QPushButton::clicked, [this]()
         {
             std::string send_mess = ui.lineEdit_addr->text().toStdString();
-            serv_sock->write(send_mess.data());
+            serverSock->write(send_mess.data());
         });
+
     //connect(ui.pushButton_shutdown, &QPushButton::clicked, this, &QtTcpClient::serv_shutdown);
     //connect(ui.pushButton_disconnect, &QPushButton::clicked, [&]() {shutdown(*client_sock, 2); ui.label_connect->setText("Нет"); });
-
 }
 
-QtTcpClient::~QtTcpClient()
-{
-    delete serv_sock;
-    delete paint_wdg;
-}
+void QtTcpClient::slotConnectingToServ()
+    {
+    serverSock = std::make_unique<QTcpSocket>(this);
 
-void QtTcpClient::slot_connecting_toserv()
-{
-    serv_sock = new QTcpSocket(this);
-
-    connect(serv_sock, &QTcpSocket::connected, this, [&]() 
+    connect(serverSock.get(), &QTcpSocket::connected, this, [&]() 
         { ui.output_wdg->append("Connected server with address " + 
             ui.lineEdit_ip->text() + ':' + ui.lineEdit_port->text());
           ui.label_connect->setText("ДА");
         });
-    connect(serv_sock, SIGNAL(error(QAbstractSocket::SocketError)),
-        this, SLOT(slot_errorconnect(QAbstractSocket::SocketError))
+
+    connect(serverSock.get(), &QTcpSocket::disconnected, this, [&]()
+        { ui.output_wdg->append("Disconnected server with address " +
+            ui.lineEdit_ip->text() + ':' + ui.lineEdit_port->text());
+    ui.label_connect->setText("Нет");
+        });
+
+    connect(serverSock.get(), SIGNAL(error(QAbstractSocket::SocketError)),
+        this, SLOT(slotErrorConnect(QAbstractSocket::SocketError))
     );
-    connect(serv_sock, SIGNAL(readyRead(), SLOT()),
-        this, SLOT(slot_receive_file())
+    connect(serverSock.get(), SIGNAL(readyRead()),
+        this, SLOT(slotReceiveFile())
     );
 
-    serv_sock->connectToHost(ui.lineEdit_ip->text(), ui.lineEdit_port->text().toUInt());
+    serverSock->connectToHost(ui.lineEdit_ip->text(), ui.lineEdit_port->text().toUInt());
 }
 
-//void QtTcpClient::req_file()
-//{
-//    std::string send_mess = ui.lineEdit_addr->text().toStdString();
-//
-//    serv_sock->write(send_mess.data());
-
-    ////packet_size = recv(*client_sock, reciev_buff.data(), reciev_buff.size(), 0);
-
-    //if (packet_size == SOCKET_ERROR)
-    //{
-    //    std::string err("Can`t receiv file from Server. Error #" + sock_wrap.get_last_error_string());
-    //    QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
-
-    //    return;
-    //}
-
-    ////Получаем размер файла из первых четырёх байт
-    //uint32_t size_file = size_extraction(reciev_buff);
-    ////Буфер для сбора картинки по чистям
-    //QByteArray buff_img(reciev_buff.data() + SERV_INFO_SZ, reciev_buff.size() - SERV_INFO_SZ);
-
-    //int32_t reciev_size{ packet_size};
-    //while (reciev_size < size_file)
-    //{
-    //    packet_size = recv(*client_sock, reciev_buff.data(), reciev_buff.size(), 0);
-    //    if (packet_size == SOCKET_ERROR)
-    //    {
-    //        std::string err("Can`t receiv file from Server. Error #" + sock_wrap.get_last_error_string());
-    //        QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
-    //        return;
-    //    }
-
-    //    buff_img.append(reciev_buff.data(), packet_size);
-    //    reciev_size += packet_size;
-    //}
-
-    //paint_wdg = new PaintWdg(buff_img);
-    //paint_wdg->show_wdg();
-//}
-
-void QtTcpClient::slot_receive_file()
+void QtTcpClient::slotReceiveFile()
 {
-    packet_size = serv_sock->read(receive_buff.data(), BUFF_SIZE);
-
-    if (packet_size == -1)
+    //Проверяем первый ли кусок данных
+    if (serverSock->bytesAvailable() >= BUFF_SIZE && (!hasFileSize))
     {
-        std::string err("Can`t receiv file from Server. Error #" + sock_wrap.get_last_error_string());
-        QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
-
-        return;
+        packetSize = serverSock->read(receiveBuff.data(), BUFF_SIZE);
+        if (packetSize == -1)
+        {
+            QMessageBox::critical(this, "Error reciev file", "Reading on a closed socket or after a process has died");
+            return;
+        }
+        //Получаем размер файла из первых четырёх байт
+        fileSize = sizeExtraction(receiveBuff);
+        //Буфер для сбора картинки по чистям
+        fileBuff = std::make_unique<QByteArray>(receiveBuff.data() + SERVICE_INFO_SZ, receiveBuff.size() - SERVICE_INFO_SZ);
+        hasFileSize = true;
     }
 
-    //Получаем размер файла из первых четырёх байт
-    uint32_t size_file = size_extraction(receive_buff);
-    //Буфер для сбора картинки по чистям
-    QByteArray buff_img(receive_buff.data() + SERV_INFO_SZ, receive_buff.size() - SERV_INFO_SZ);
-    //receive_buff.fill(0);
-
+    //Ждём пока не прейдут все данные
+    //Размер файла - первый принятый кусок или 0xFFFFEFFF для ожидания полного заполнения буфера
+    //Чтобы получить размер файла
+    if (serverSock->bytesAvailable() < fileSize - BUFF_SIZE)    
+        return;
     
-    int32_t reciev_size{ packet_size };
-    while (reciev_size < size_file)
+    int32_t reciev_size = packetSize;
+    while (reciev_size < fileSize)
     {
-        packet_size = serv_sock->read(receive_buff.data(), BUFF_SIZE);
-        //packet_size = recv(*client_sock, receive_buff.data(), receive_buff.size(), 0);
-        if (packet_size == -1)
+
+        packetSize = serverSock->read(receiveBuff.data(), BUFF_SIZE);
+        if (packetSize == -1)
         {
-            std::string err("Can`t receiv file from Server. Error #" + sock_wrap.get_last_error_string());
-            QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
+            QMessageBox::critical(this, "Error reciev file", "Reading on a closed socket or after a process has died");
             return;
         }
 
-        buff_img.append(receive_buff.data(), packet_size);
-        //receive_buff.fill(0);
-        reciev_size += packet_size;
+        fileBuff->append(receiveBuff.data(), packetSize);
+        reciev_size += packetSize;
     }
+    hasFileSize = false;
 
-    packet_size = 0;
-    paint_wdg = new PaintWdg(buff_img);
-    paint_wdg->show_wdg();
+    paintWdg = std::make_unique<PaintWdg>(*fileBuff.get());
+    paintWdg->show_wdg();
 }
 
 //void QtTcpClient::serv_shutdown()
@@ -130,9 +92,9 @@ void QtTcpClient::slot_receive_file()
 //    const std::string CMD_EXT("exit");
 //    if (client_sock->opened())
 //    {
-//        packet_size = send(*client_sock, CMD_EXT.c_str(), CMD_EXT.size(), 0);
+//        packetSize = send(*client_sock, CMD_EXT.c_str(), CMD_EXT.size(), 0);
 //
-//        if (packet_size == SOCKET_ERROR)
+//        if (packetSize == SOCKET_ERROR)
 //        {
 //            std::string err("Can't send CMD_EXT to Server. Error #" + sock_wrap.get_last_error_string());
 //            QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
@@ -142,7 +104,7 @@ void QtTcpClient::slot_receive_file()
 //    }
 //}
 
-void QtTcpClient::slot_errorconnect(QAbstractSocket::SocketError err)
+void QtTcpClient::slotErrorConnect(QAbstractSocket::SocketError err)
 {
     QString strError =
         "Error: " + (err == QAbstractSocket::HostNotFoundError ?
@@ -151,19 +113,19 @@ void QtTcpClient::slot_errorconnect(QAbstractSocket::SocketError err)
             "The remote host is closed." :
             err == QAbstractSocket::ConnectionRefusedError ?
             "The connection was refused." :
-            QString(serv_sock->errorString())
+            QString(serverSock->errorString())
             );
     ui.output_wdg->append(strError);
 }
 
-uint32_t QtTcpClient::size_extraction(QByteArray&buf_bin)
+uint32_t QtTcpClient::sizeExtraction(QByteArray &buf_bin)
 {
-    uint32_t size_file{};
+    uint32_t fileSize{};
     
     for (int i{}, factor{ 1 }; i < 4; ++i, factor *= 0x100)
-        size_file +=  static_cast<unsigned char>(buf_bin[i]) * factor;
+        fileSize +=  static_cast<unsigned char>(buf_bin[i]) * factor;
         
-    return size_file;
+    return fileSize;
 }
 
 
