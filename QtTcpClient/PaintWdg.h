@@ -5,7 +5,7 @@ class PaintWdg : QWidget
 {
 public:
 	PaintWdg(QByteArray &buff_img, QWidget* parent = nullptr);
-	void show_wdg();
+	void showWdg(QString fileName);
 
 protected:
 	void paintEvent(QPaintEvent* event)override;

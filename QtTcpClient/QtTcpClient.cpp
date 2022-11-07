@@ -5,16 +5,12 @@ QtTcpClient::QtTcpClient(QWidget *parent)
     , receiveBuff(BUFF_SIZE, 0)
 {
     ui.setupUi(this);
-    
-    connect(ui.pushButton_connect, SIGNAL(clicked()), SLOT(slotConnectingToServ()));
-    connect(ui.pushButton_req, &QPushButton::clicked, [this]()
-        {
-            std::string send_mess = ui.lineEdit_addr->text().toStdString();
-            serverSock->write(send_mess.data());
-        });
-
-    //connect(ui.pushButton_shutdown, &QPushButton::clicked, this, &QtTcpClient::serv_shutdown);
-    //connect(ui.pushButton_disconnect, &QPushButton::clicked, [&]() {shutdown(*client_sock, 2); ui.label_connect->setText("Нет"); });
+    ui.output_wdg->setReadOnly(true);
+    connect(ui.pushButton_connect, &QPushButton::clicked, this, &QtTcpClient::slotConnectingToServ);
+    connect(ui.pushButton_req, &QPushButton::clicked, [this]() {sendRequest(ui.lineEdit_addr->text()); });
+    //connect(ui.pushButton_req, SIGNAL(clicked()), SLOT(slotSendRequest(ui.lineEdit_addr->text())));
+    //connect(ui.pushButton_shutdown, SIGNAL(clicked()), SLOT(slotSendRequest("exit")));
+    connect(ui.pushButton_shutdown, &QPushButton::clicked, this, &QtTcpClient::slotServShutdown);
 }
 
 void QtTcpClient::slotConnectingToServ()
@@ -22,25 +18,44 @@ void QtTcpClient::slotConnectingToServ()
     serverSock = std::make_unique<QTcpSocket>(this);
 
     connect(serverSock.get(), &QTcpSocket::connected, this, [&]() 
-        { ui.output_wdg->append("Connected server with address " + 
+        { 
+            ui.output_wdg->append("Connected server with address " + 
             ui.lineEdit_ip->text() + ':' + ui.lineEdit_port->text());
-          ui.label_connect->setText("ДА");
+            ui.label_connect->setText("ДА");
+            //ui.label_status->setText("СОСТОЯНИЕ СЕРВЕРА");
         });
 
     connect(serverSock.get(), &QTcpSocket::disconnected, this, [&]()
-        { ui.output_wdg->append("Disconnected server with address " +
+        { 
+            serverSock->waitForDisconnected();
+            ui.output_wdg->append("Disconnected server with address " +
             ui.lineEdit_ip->text() + ':' + ui.lineEdit_port->text());
-    ui.label_connect->setText("Нет");
+            ui.label_connect->setText("Нет");
         });
 
     connect(serverSock.get(), SIGNAL(error(QAbstractSocket::SocketError)),
-        this, SLOT(slotErrorConnect(QAbstractSocket::SocketError))
-    );
-    connect(serverSock.get(), SIGNAL(readyRead()),
-        this, SLOT(slotReceiveFile())
-    );
+        SLOT(slotErrorConnect(QAbstractSocket::SocketError)));
+
+    connect(serverSock.get(), &QTcpSocket::readyRead, this, &QtTcpClient::slotReceiveFile);
+
+    connect(ui.pushButton_disconnect, &QPushButton::clicked, [this]()
+        {
+            serverSock->disconnectFromHost();
+        });
 
     serverSock->connectToHost(ui.lineEdit_ip->text(), ui.lineEdit_port->text().toUInt());
+}
+
+void QtTcpClient::slotSendRequest(QString request)
+{
+    //std::string send_mess = ui.lineEdit_addr->text().toStdString();
+    int32_t dataSentSz = 0;
+    dataSentSz = serverSock->write(request.toStdString().data());
+    if (packetSize == -1)
+    {
+        QMessageBox::critical(this, "Error send request", "Cannot send file request");
+        return;
+    }
 }
 
 void QtTcpClient::slotReceiveFile()
@@ -84,25 +99,36 @@ void QtTcpClient::slotReceiveFile()
     hasFileSize = false;
 
     paintWdg = std::make_unique<PaintWdg>(*fileBuff.get());
-    paintWdg->show_wdg();
+    paintWdg->showWdg(ui.lineEdit_addr->text());
 }
 
-//void QtTcpClient::serv_shutdown()
-//{
-//    const std::string CMD_EXT("exit");
-//    if (client_sock->opened())
-//    {
-//        packetSize = send(*client_sock, CMD_EXT.c_str(), CMD_EXT.size(), 0);
-//
-//        if (packetSize == SOCKET_ERROR)
-//        {
-//            std::string err("Can't send CMD_EXT to Server. Error #" + sock_wrap.get_last_error_string());
-//            QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
-//            return;
-//        }
-//        ui.label_status->setText("СЕРВЕР ЛЕЖИТ");
-//    }
-//}
+void QtTcpClient::slotServShutdown()
+{
+
+    if (serverSock)
+    {
+        if (serverSock->state() == QAbstractSocket::ConnectedState)
+        {
+            sendRequest("exit");
+            ui.label_status->setText("СЕРВЕР ЛЕЖИТ");
+        }
+
+    }
+
+    //const std::string CMD_EXT("exit");
+    //if (client_sock->opened())
+    //{
+    //    packetSize = send(*client_sock, CMD_EXT.c_str(), CMD_EXT.size(), 0);
+
+    //    if (packetSize == SOCKET_ERROR)
+    //    {
+    //        std::string err("Can't send CMD_EXT to Server. Error #" + sock_wrap.get_last_error_string());
+    //        QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
+    //        return;
+    //    }
+    
+    //}
+}
 
 void QtTcpClient::slotErrorConnect(QAbstractSocket::SocketError err)
 {
@@ -116,6 +142,17 @@ void QtTcpClient::slotErrorConnect(QAbstractSocket::SocketError err)
             QString(serverSock->errorString())
             );
     ui.output_wdg->append(strError);
+}
+
+void QtTcpClient::sendRequest(QString request)
+{
+    int32_t dataSentSz = 0;
+    dataSentSz = serverSock->write(request.toStdString().data());
+    if (packetSize == -1)
+    {
+        QMessageBox::critical(this, "Error send request", "Cannot send file request");
+        return;
+    }
 }
 
 uint32_t QtTcpClient::sizeExtraction(QByteArray &buf_bin)

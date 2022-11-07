@@ -6,8 +6,9 @@ PaintWdg::PaintWdg(QByteArray &buff_img, QWidget* parent)
     img.loadFromData(buff_img);
 }
 
-void PaintWdg::show_wdg()
+void PaintWdg::showWdg(QString fileName)
 {
+    setWindowTitle(fileName);
     show();
     repaint();
 }

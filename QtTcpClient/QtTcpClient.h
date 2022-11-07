@@ -15,11 +15,13 @@ public:
 
 private slots:
     void slotConnectingToServ();
+    void slotSendRequest(QString request);
     void slotReceiveFile();
-    //void serv_shutdown();
+    void slotServShutdown();
     void slotErrorConnect(QAbstractSocket::SocketError err);
  
 private:
+    void sendRequest(QString request);
     uint32_t sizeExtraction(QByteArray &buf_bin);
 
 private:

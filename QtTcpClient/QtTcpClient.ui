@@ -110,7 +110,7 @@
       <item row="8" column="0" colspan="2">
        <widget class="QLabel" name="label_status">
         <property name="text">
-         <string>СОСТАЯНИЕ СЕРВЕРА</string>
+         <string>ОКНО ВЫВОДА</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
