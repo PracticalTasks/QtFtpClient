@@ -8,8 +8,6 @@ QtTcpClient::QtTcpClient(QWidget *parent)
     ui.output_wdg->setReadOnly(true);
     connect(ui.pushButton_connect, &QPushButton::clicked, this, &QtTcpClient::slotConnectingToServ);
     connect(ui.pushButton_req, &QPushButton::clicked, [this]() {sendRequest(ui.lineEdit_addr->text()); });
-    //connect(ui.pushButton_req, SIGNAL(clicked()), SLOT(slotSendRequest(ui.lineEdit_addr->text())));
-    //connect(ui.pushButton_shutdown, SIGNAL(clicked()), SLOT(slotSendRequest("exit")));
     connect(ui.pushButton_shutdown, &QPushButton::clicked, this, &QtTcpClient::slotServShutdown);
 }
 
@@ -48,7 +46,6 @@ void QtTcpClient::slotConnectingToServ()
 
 void QtTcpClient::slotSendRequest(QString request)
 {
-    //std::string send_mess = ui.lineEdit_addr->text().toStdString();
     int32_t dataSentSz = 0;
     dataSentSz = serverSock->write(request.toStdString().data());
     if (packetSize == -1)
@@ -71,6 +68,12 @@ void QtTcpClient::slotReceiveFile()
         }
         //Получаем размер файла из первых четырёх байт
         fileSize = sizeExtraction(receiveBuff);
+        //Ограничения на размер файла 4Гб
+        if (fileSize > 0xFFFFFFFF)
+        {
+            ui.output_wdg->append("Too large file size");
+            serverSock->abort();
+        }
         //Буфер для сбора картинки по чистям
         fileBuff = std::make_unique<QByteArray>(receiveBuff.data() + SERVICE_INFO_SZ, receiveBuff.size() - SERVICE_INFO_SZ);
         hasFileSize = true;
@@ -114,20 +117,6 @@ void QtTcpClient::slotServShutdown()
         }
 
     }
-
-    //const std::string CMD_EXT("exit");
-    //if (client_sock->opened())
-    //{
-    //    packetSize = send(*client_sock, CMD_EXT.c_str(), CMD_EXT.size(), 0);
-
-    //    if (packetSize == SOCKET_ERROR)
-    //    {
-    //        std::string err("Can't send CMD_EXT to Server. Error #" + sock_wrap.get_last_error_string());
-    //        QMessageBox::warning(this, "Error reciev file", err.c_str(), QMessageBox::Cancel);
-    //        return;
-    //    }
-    
-    //}
 }
 
 void QtTcpClient::slotErrorConnect(QAbstractSocket::SocketError err)
